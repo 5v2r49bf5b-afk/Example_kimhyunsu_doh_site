@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>자유 낙하 실험실 · 깃털과 쇠구슬</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg: #0B1420;
+    --panel: #122238;
+    --panel-border: #23415F;
+    --ink: #EAF0F6;
+    --ink-dim: #7E93A8;
+    --gold: #E8A33D;
+    --cyan: #5FB8D9;
+    --red: #E2584B;
+    --steel-hi: #E3E7EB;
+    --steel-lo: #454C54;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      repeating-linear-gradient(0deg, rgba(95,184,217,0.06) 0px, rgba(95,184,217,0.06) 1px, transparent 1px, transparent 32px),
+      repeating-linear-gradient(90deg, rgba(95,184,217,0.06) 0px, rgba(95,184,217,0.06) 1px, transparent 1px, transparent 32px),
+      var(--bg);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    padding: 28px 16px 40px;
+  }
+
+  .page{ max-width: 880px; margin: 0 auto; }
+
+  header{ margin-bottom: 20px; }
+  .eyebrow{
+    font-size: 12px; letter-spacing: 0.18em; color: var(--cyan);
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  h1{
+    font-family: 'Newsreader', serif;
+    font-weight: 600;
+    font-size: clamp(24px, 4vw, 34px);
+    margin: 0 0 8px;
+    letter-spacing: 0.01em;
+  }
+  .lede{
+    color: var(--ink-dim);
+    font-size: 13.5px;
+    line-height: 1.6;
+    max-width: 640px;
+  }
+
+  .mode-row{
+    display:flex; gap:10px; margin: 18px 0 20px; flex-wrap: wrap;
+  }
+  .mode-btn{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: box-shadow .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .mode-btn.active[data-mode="vacuum"]{
+    color: var(--cyan); border-color: var(--cyan);
+    box-shadow: 0 0 0 1px var(--cyan), 0 0 16px rgba(95,184,217,0.35);
+  }
+  .mode-btn.active[data-mode="air"]{
+    color: var(--gold); border-color: var(--gold);
+    box-shadow: 0 0 0 1px var(--gold), 0 0 16px rgba(232,163,61,0.35);
+  }
+  .mode-btn:focus-visible, .ctrl-btn:focus-visible{
+    outline: 2px solid var(--cyan); outline-offset: 2px;
+  }
+
+  .layout{
+    display:grid; grid-template-columns: 460px 1fr; gap: 20px;
+  }
+  @media (max-width: 720px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  .stage{
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  canvas{ width: 100%; height: auto; display:block; border-radius: 6px; }
+  .caption{
+    font-size: 11.5px; color: var(--ink-dim); line-height:1.6; margin-top: 10px;
+    padding-top: 10px; border-top: 1px dashed var(--panel-border);
+  }
+
+  .panel{
+    display:flex; flex-direction: column; gap: 12px;
+  }
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .card h2{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-dim); margin: 0 0 10px; display:flex; align-items:center; gap:6px;
+  }
+  .readout-row{ display:flex; justify-content: space-between; font-size: 13.5px; padding: 3px 0; }
+  .readout-row .label{ color: var(--ink-dim); }
+  .readout-row .value{ color: var(--gold); font-weight: 700; }
+  .card.ball .readout-row .value{ color: var(--steel-hi); }
+  .landed-tag{
+    margin-top: 8px; font-size: 12px; color: var(--red);
+    display:none;
+  }
+  .landed-tag.show{ display:block; }
+
+  .controls{ display:flex; gap: 10px; }
+  .ctrl-btn{
+    flex:1; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+    padding: 11px 10px; border-radius: 8px; border: 1px solid var(--panel-border);
+    background: #0E1C2E; color: var(--ink); cursor: pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .ctrl-btn.primary{ border-color: var(--gold); color: var(--gold); }
+  .ctrl-btn:hover{ border-color: var(--ink); }
+
+  .formula{
+    font-size: 12.5px; line-height: 1.7; color: var(--ink-dim);
+  }
+  .formula b{ color: var(--ink); }
+
+  .banner{
+    display:none;
+    margin-top: 14px;
+    background: rgba(232,163,61,0.08);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .banner.show{ display:block; }
+
+  footer{
+    margin-top: 22px;
+    border: 1px dashed var(--panel-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.7;
+  }
+  footer b{ color: var(--cyan); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="eyebrow">Physics Lab · 자유 낙하 운동 실험</div>
+    <h1>깃털과 쇠구슬: 진공 vs 공기 중</h1>
+    <p class="lede">질량이 서로 다른 두 물체가 낙하할 때, 중력과 공기 저항이 운동에 어떤 영향을 미치는지 관찰하는 시뮬레이션입니다. 아래에서 환경을 선택하고 실험을 시작해 보세요.</p>
+  </header>
+
+  <div class="mode-row" role="group" aria-label="실험 환경 선택">
+    <button class="mode-btn active" data-mode="vacuum" aria-pressed="true">🌌 진공 상태</button>
+    <button class="mode-btn" data-mode="air" aria-pressed="false">💨 공기 중</button>
+  </div>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="sim" width="440" height="560" aria-label="낙하 시뮬레이션 캔버스"></canvas>
+      <div class="caption">
+        점 흔적은 0.1초 간격으로 남긴 위치입니다. 간격이 점점 넓어지면 가속 중이라는 뜻이고, 간격이 일정해지면 알짜힘이 0이 되어 등속(종단 속도)으로 떨어지고 있다는 뜻입니다.
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="card feather">
+        <h2>🪶 깃털 (Feather)</h2>
+        <div class="readout-row"><span class="label">가속도 a</span><span class="value" id="fa">9.80 m/s²</span></div>
+        <div class="readout-row"><span class="label">속도 v</span><span class="value" id="fv">0.00 m/s</span></div>
+        <div class="readout-row"><span class="label">낙하 거리 y</span><span class="value" id="fy">0.00 m</span></div>
+        <div class="landed-tag" id="fLanded">✅ 도착 · <span id="fTime">0.00</span>초</div>
+      </div>
+
+      <div class="card ball">
+        <h2>⚫ 쇠구슬 (Steel Ball)</h2>
+        <div class="readout-row"><span class="label">가속도 a</span><span class="value" id="ba">9.80 m/s²</span></div>
+        <div class="readout-row"><span class="label">속도 v</span><span class="value" id="bv">0.00 m/s</span></div>
+        <div class="readout-row"><span class="label">낙하 거리 y</span><span class="value" id="by">0.00 m</span></div>
+        <div class="landed-tag" id="bLanded">✅ 도착 · <span id="bTime">0.00</span>초</div>
+      </div>
+
+      <div class="card">
+        <h2>경과 시간</h2>
+        <div class="readout-row"><span class="label">t</span><span class="value" id="elapsed" style="color:var(--ink)">0.00 s</span></div>
+        <div class="controls" style="margin-top:10px;">
+          <button class="ctrl-btn primary" id="playBtn">▶ 시작</button>
+          <button class="ctrl-btn" id="resetBtn">↺ 초기화</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>역학 원리</h2>
+        <div class="formula" id="formulaBox">
+          알짜힘은 중력(F = mg)뿐입니다. mg = ma에서 질량 m이 약분되어 <b>a = g = 9.80 m/s²</b>. 질량과 무관하게 모든 물체가 같은 가속도로 떨어집니다.
+        </div>
+      </div>
+
+      <div class="banner" id="resultBanner"></div>
+    </div>
+  </div>
+
+  <footer>
+    <b>🌕 1971년 아폴로 15호 실측 기록</b> — 우주비행사 데이비드 스콧은 대기가 없는 달 표면에서 1.32kg 망치와 30g 깃털을 동시에 떨어뜨렸습니다. 두 물체는 정확히 같은 순간 바닥에 닿았고, 이는 갈릴레이의 자유 낙하 이론이 실제 우주에서도 성립함을 증명한 순간이었습니다.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('sim');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const G = 9.8;
+  const DROP_H = 8;          // meters visualized
+  const FEATHER_VT = 1.8;    // terminal velocity, m/s
+  const BALL_VT = 90;        // terminal velocity, m/s (effectively negligible drag over 8m)
+
+  const TOP_MARGIN = 46, BOTTOM_MARGIN = 54, LEFT_MARGIN = 40, RIGHT_MARGIN = 10;
+  const PLOT_H = H - TOP_MARGIN - BOTTOM_MARGIN;
+  const PX_PER_M = PLOT_H / DROP_H;
+  const LANE_W = (W - LEFT_MARGIN - RIGHT_MARGIN) / 2;
+  const LANE1_X = LEFT_MARGIN + LANE_W / 2;
+  const LANE2_X = LEFT_MARGIN + LANE_W + LANE_W / 2;
+  const GROUND_Y = TOP_MARGIN + DROP_H * PX_PER_M;
+
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const stars = [];
+  for(let i=0;i<40;i++){
+    stars.push({ x: Math.random()*W, y: Math.random()*(GROUND_Y-TOP_MARGIN)+TOP_MARGIN, r: Math.random()*1.4+0.3 });
+  }
+
+  let mode = 'vacuum';
+  let running = false;
+  let elapsed = 0;
+  let lastTs = null;
+  let rafId = null;
+
+  function freshObj(){ return { y:0, v:0, a:G, landed:false, landTime:null, trail:[], lastSample:0 }; }
+  let feather = freshObj();
+  let ball = freshObj();
+
+  function mToPy(m){ return TOP_MARGIN + m*PX_PER_M; }
+
+  function computeAccel(obj, vt){
+    if(mode === 'vacuum') return G;
+    const ratio = obj.v / vt;
+    return Math.max(0, G * (1 - ratio*ratio));
+  }
+
+  function step(dt){
+    elapsed += dt;
+    [[feather, FEATHER_VT], [ball, BALL_VT]].forEach(function(pair){
+      const obj = pair[0], vt = pair[1];
+      if(obj.landed) return;
+      obj.a = computeAccel(obj, vt);
+      obj.v += obj.a * dt;
+      if(mode === 'air') obj.v = Math.min(obj.v, vt);
+      obj.y += obj.v * dt;
+      if(elapsed - obj.lastSample >= 0.09){
+        obj.trail.push(obj.y);
+        obj.lastSample = elapsed;
+        if(obj.trail.length > 90) obj.trail.shift();
+      }
+      if(obj.y >= DROP_H){
+        obj.y = DROP_H;
+        obj.landed = true;
+        obj.landTime = elapsed;
+        obj.a = 0;
+      }
+    });
+    if(feather.landed && ball.landed && running){
+      running = false;
+      cancelAnimationFrame(rafId);
+      showResultBanner();
+      updatePlayButton();
+    }
+  }
+
+  function drawBackground(){
+    const grad = ctx.createLinearGradient(0,0,0,H);
+    if(mode === 'vacuum'){
+      grad.addColorStop(0, '#0A0F1C');
+      grad.addColorStop(1, '#0D1526');
+    } else {
+      grad.addColorStop(0, '#152A40');
+      grad.addColorStop(1, '#0F2032');
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,W,H);
+
+    if(mode === 'vacuum'){
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      stars.forEach(function(s){ ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill(); });
+    } else {
+      ctx.strokeStyle = 'rgba(232,163,61,0.10)';
+      ctx.lineWidth = 1;
+      const offset = reduceMotion ? 0 : (elapsed*10) % 40;
+      for(let y = TOP_MARGIN; y < GROUND_Y; y += 26){
+        ctx.beginPath();
+        ctx.setLineDash([10,10]);
+        ctx.lineDashOffset = -offset;
+        ctx.moveTo(LEFT_MARGIN, y);
+        ctx.lineTo(W-RIGHT_MARGIN, y);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+  }
+
+  function drawScaleAndLanes(){
+    ctx.strokeStyle = 'rgba(122,160,186,0.25)';
+    ctx.fillStyle = '#7E93A8';
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.lineWidth = 1;
+    for(let m=0; m<=DROP_H; m+=2){
+      const y = mToPy(m);
+      ctx.beginPath();
+      ctx.moveTo(LEFT_MARGIN, y);
+      ctx.lineTo(W-RIGHT_MARGIN, y);
+      ctx.stroke();
+      ctx.fillText(m+'m', 6, y+3);
+    }
+
+    ctx.strokeStyle = 'rgba(234,240,246,0.18)';
+    ctx.setLineDash([4,5]);
+    ctx.beginPath();
+    ctx.moveTo(LEFT_MARGIN+LANE_W, TOP_MARGIN);
+    ctx.lineTo(LEFT_MARGIN+LANE_W, GROUND_Y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#EAF0F6';
+    ctx.font = '600 13px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('🪶 깃털', LANE1_X, 24);
+    ctx.fillText('⚫ 쇠구슬', LANE2_X, 24);
+    ctx.textAlign = 'left';
+  }
+
+  function drawGround(){
+    ctx.strokeStyle = '#E2584B';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(LEFT_MARGIN, GROUND_Y);
+    ctx.lineTo(W-RIGHT_MARGIN, GROUND_Y);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(226,88,75,0.5)';
+    ctx.lineWidth = 1;
+    for(let x=LEFT_MARGIN; x<W-RIGHT_MARGIN; x+=10){
+      ctx.beginPath();
+      ctx.moveTo(x, GROUND_Y+4);
+      ctx.lineTo(x-6, GROUND_Y+12);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#E2584B';
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.fillText('GROUND · 지면', LEFT_MARGIN, GROUND_Y+26);
+  }
+
+  function drawTrail(obj, laneX, color){
+    ctx.fillStyle = color;
+    obj.trail.forEach(function(ym){
+      ctx.beginPath();
+      ctx.arc(laneX, mToPy(ym), 2.4, 0, Math.PI*2);
+      ctx.fill();
+    });
+  }
+
+  function drawFeather(obj){
+    const py = mToPy(obj.y);
+    drawTrail(obj, LANE1_X, 'rgba(232,163,61,0.45)');
+    ctx.font = '26px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🪶', LANE1_X, py);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  function drawBall(obj){
+    const py = mToPy(obj.y);
+    drawTrail(obj, LANE2_X, 'rgba(227,231,235,0.4)');
+    const r = 12;
+    const grad = ctx.createRadialGradient(LANE2_X-4, py-4, 1, LANE2_X, py, r);
+    grad.addColorStop(0, '#E3E7EB');
+    grad.addColorStop(1, '#454C54');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(LANE2_X, py, r, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawImpactFlash(obj, laneX){
+    if(!obj.landed) return;
+    const age = elapsed - obj.landTime;
+    if(reduceMotion || age > 0.5) return;
+    const progress = age / 0.5;
+    ctx.strokeStyle = 'rgba(226,88,75,' + (0.7*(1-progress)) + ')';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(laneX, GROUND_Y, 6 + progress*34, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  function draw(){
+    drawBackground();
+    drawScaleAndLanes();
+    drawGround();
+    drawFeather(feather);
+    drawBall(ball);
+    drawImpactFlash(feather, LANE1_X);
+    drawImpactFlash(ball, LANE2_X);
+  }
+
+  function fmt(n){ return n.toFixed(2); }
+
+  function updateReadouts(){
+    document.getElementById('fa').textContent = fmt(feather.a) + ' m/s²';
+    document.getElementById('fv').textContent = fmt(feather.v) + ' m/s';
+    document.getElementById('fy').textContent = fmt(feather.y) + ' m';
+    document.getElementById('ba').textContent = fmt(ball.a) + ' m/s²';
+    document.getElementById('bv').textContent = fmt(ball.v) + ' m/s';
+    document.getElementById('by').textContent = fmt(ball.y) + ' m';
+    document.getElementById('elapsed').textContent = fmt(elapsed) + ' s';
+
+    const fLanded = document.getElementById('fLanded');
+    const bLanded = document.getElementById('bLanded');
+    if(feather.landed){ fLanded.classList.add('show'); document.getElementById('fTime').textContent = fmt(feather.landTime); }
+    else { fLanded.classList.remove('show'); }
+    if(ball.landed){ bLanded.classList.add('show'); document.getElementById('bTime').textContent = fmt(ball.landTime); }
+    else { bLanded.classList.remove('show'); }
+  }
+
+  function showResultBanner(){
+    const banner = document.getElementById('resultBanner');
+    if(mode === 'vacuum'){
+      banner.innerHTML = '🎯 <b>동시 도착!</b> 두 물체 모두 t = ' + fmt(feather.landTime) + '초에 도달했습니다 — 공기 저항이 없으면 질량과 무관하게 같은 가속도로 떨어집니다.';
+    } else {
+      const diff = Math.abs(feather.landTime - ball.landTime);
+      const first = feather.landTime < ball.landTime ? '깃털' : '쇠구슬';
+      banner.innerHTML = '🎯 쇠구슬 ' + fmt(ball.landTime) + '초 · 깃털 ' + fmt(feather.landTime) + '초 (Δt = ' + fmt(diff) + '초) — 표면적이 넓은 깃털이 공기 저항을 더 많이 받아 늦게 도착했습니다.';
+    }
+    banner.classList.add('show');
+  }
+
+  function hideResultBanner(){
+    document.getElementById('resultBanner').classList.remove('show');
+  }
+
+  function updateFormulaBox(){
+    const box = document.getElementById('formulaBox');
+    if(mode === 'vacuum'){
+      box.innerHTML = '알짜힘은 중력(F = mg)뿐입니다. mg = ma에서 질량 m이 약분되어 <b>a = g = 9.80 m/s²</b>. 질량과 무관하게 모든 물체가 같은 가속도로 떨어집니다.';
+    } else {
+      box.innerHTML = '알짜힘 = 중력 − 공기 저항. 속도가 빨라질수록 저항도 커지며, <b>속도가 종단 속도(v_t)에 가까워지면 a → 0</b>이 되어 등속으로 떨어집니다. 표면적이 큰 깃털은 훨씬 낮은 종단 속도에서 그 상태에 도달합니다.';
+    }
+  }
+
+  function loop(ts){
+    if(!running) return;
+    if(lastTs === null) lastTs = ts;
+    let dt = (ts - lastTs) / 1000;
+    lastTs = ts;
+    dt = Math.min(dt, 0.033);
+    step(dt);
+    draw();
+    updateReadouts();
+    if(running) rafId = requestAnimationFrame(loop);
+  }
+
+  function updatePlayButton(){
+    const btn = document.getElementById('playBtn');
+    if(feather.landed && ball.landed){
+      btn.textContent = '▶ 시작';
+      btn.disabled = false;
+    } else {
+      btn.textContent = running ? '❚❚ 일시정지' : '▶ 시작';
+    }
+  }
+
+  function play(){
+    if(feather.landed && ball.landed) return;
+    running = true;
+    lastTs = null;
+    rafId = requestAnimationFrame(loop);
+    updatePlayButton();
+  }
+
+  function pause(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    updatePlayButton();
+  }
+
+  function resetSim(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    elapsed = 0; lastTs = null;
+    feather = freshObj();
+    ball = freshObj();
+    hideResultBanner();
+    updatePlayButton();
+    draw();
+    updateReadouts();
+  }
+
+  function setMode(newMode){
+    mode = newMode;
+    document.querySelectorAll('.mode-btn').forEach(function(b){
+      const active = b.getAttribute('data-mode') === newMode;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    updateFormulaBox();
+    resetSim();
+  }
+
+  document.getElementById('playBtn').addEventListener('click', function(){
+    if(running) pause(); else play();
+  });
+  document.getElementById('resetBtn').addEventListener('click', resetSim);
+  document.querySelectorAll('.mode-btn').forEach(function(b){
+    b.addEventListener('click', function(){ setMode(b.getAttribute('data-mode')); });
+  });
+
+  draw();
+  updateReadouts();
+})();
+</script>
+</body>
+</html>
